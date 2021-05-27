@@ -4,9 +4,10 @@ import groovy.json.JsonSlurper
 
 buildscript {
     repositories {
+        mavenCentral()
         maven {
             name 'forge'
-            url 'https://files.minecraftforge.net/maven'
+            url 'https://maven.minecraftforge.net/'
         }
         maven {
             name 'sonatype'
@@ -16,8 +17,10 @@ buildscript {
             name 'spigot'
             url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
         }
-
-        mavenCentral()
+        maven { 
+        name 'papermc'
+        url 'https://papermc.io/repo/service/rest/repository/browse/maven-public/' 
+        }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:1.2-SNAPSHOT'
@@ -28,16 +31,23 @@ apply plugin: 'maven'
 apply plugin: 'cauldron'
 
 repositories {
-    mavenLocal()
+    mavenCentral()
+    maven { 
+        name 'mohist'
+        url 'https://github.com/mohistmc/maven/raw/master' 
+    }
+    maven { 
+        name 'papermc'
+        url 'https://papermc.io/repo/service/rest/repository/browse/maven-public/' 
+    }
     maven {
         name 'sonatype'
         url 'http://oss.sonatype.org/content/repositories/snapshots/'
     }
-    maven { url 'https://repo.uraniummc.cc/repository/maven-public/' }
-    maven { url 'https://github.com/mohist-community/maven/raw/master' }
+    //maven { url 'https://repo.uraniummc.cc/repository/maven-public/' }
     maven {
         name 'forge'
-        url 'https://files.minecraftforge.net/maven'
+        url 'https://maven.minecraftforge.net/'
     }
     maven {
         name 'minecraft'
@@ -47,8 +57,7 @@ repositories {
         name 'spigot'
         url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
     }
-
-    mavenCentral()
+    mavenLocal()
 }
 
 minecraft {
@@ -102,10 +111,10 @@ dependencies {
     libraries 'org.avaje:ebean:2.7.3'
     libraries 'jline:jline:2.6'
     libraries 'net.md-5:SpecialSource:1.7.4'
-    libraries 'net.sourceforge.argo:argo:2.25'
+    libraries 'net.sourceforge.argo:argo:3.12'
     libraries 'com.googlecode.json-simple:json-simple:1.1'
     libraries 'org.xerial:sqlite-jdbc:3.7.2'
-    libraries 'mysql:mysql-connector-java:5.1.14'//
+    libraries 'mysql:mysql-connector-java:5.1.14'
     libraries 'javax.persistence:persistence-api:1.0.2'
     libraries 'org.apache.httpcomponents:httpclient:4.4.1'
     libraries 'pw.prok:KImagine:0.2.0@jar'
@@ -224,25 +233,41 @@ def getSignatureFiles = {
     ]
 }
 
+
+// build.gradle for cauldron
 tasks.generateProjectCauldron << {
     def file = new File('eclipse/cauldron/build.gradle')
-    file.append('''
+    //if (file.exists()) {
+    //    file.delete();
+    //}
+    //file.createNewFile();
+    file.append('''apply plugin: {
+        id 'java'
+        id 'idea'
+    }
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
 repositories {
-    mavenLocal()
-    maven { url 'https://github.com/mohist-community/maven/raw/master' }
-    maven { url 'https://repo.uraniummc.cc/repository/maven-public/' }
+    mavenCentral()
+    maven { 
+        name 'mohist'
+        url 'https://github.com/mohistmc/maven/raw/master' 
+    }
+    maven { 
+        name 'papermc'
+        url 'https://papermc.io/repo/service/rest/repository/browse/maven-public/' 
+    }
+    //maven { url 'https://repo.uraniummc.cc/repository/maven-public/' }
     maven {
         name 'forge'
-        url 'https://files.minecraftforge.net/maven'
+        url 'https://maven.minecraftforge.net/'
     }
     maven {
         name 'minecraft'
         url 'https://libraries.minecraft.net/'
     }
-    mavenCentral()
+    mavenLocal()
 }
 dependencies {
 ''')
@@ -253,6 +278,98 @@ dependencies {
         file.append("    compile '${module}'\n")
     }
     file.append('}')
+    file.append('''
+sourceSets
+{
+    main
+    {
+        java
+        {
+            srcDir 'src/main/java/'
+            srcDir '../../src/main/java/'
+        }
+        resources
+        {
+            srcDir 'src/main/resources/'
+            srcDir '../../src/main/resources/'
+            srcDir '../../build/extractedResources/'
+        }
+    }
+    test
+    {
+        java
+        {
+            srcDir '../../src/test/java/'
+            srcDir '../../src/test/java/'
+        }
+    }
+}
+jar { exclude 'GradleStart*', 'net/minecraftforge/gradle/**' }''')
+}
+
+// build.gradle for clean
+tasks.generateProjectClean << {
+    def file = new File('eclipse/clean/build.gradle')
+    if (file.exists()) {
+        file.delete();
+    }
+    file.createNewFile();
+    file.append('''apply plugin: {
+        id 'java'
+        id 'idea'
+    }
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+    maven { 
+        name 'mohist'
+        url 'https://github.com/mohistmc/maven/raw/master' 
+    }
+    maven { 
+        name 'papermc'
+        url 'https://papermc.io/repo/service/rest/repository/browse/maven-public/' 
+    }
+    //maven { url 'https://repo.uraniummc.cc/repository/maven-public/' }
+    maven {
+        name 'forge'
+        url 'https://maven.minecraftforge.net/'
+    }
+    maven {
+        name 'minecraft'
+        url 'https://libraries.minecraft.net/'
+    }
+    mavenLocal()
+}
+dependencies {
+''')
+    configurations.libraries.resolvedConfiguration.resolvedArtifacts.collect { it.moduleVersion.id }.each { module ->
+        if (['net.minecraft:server:', 'org.ow2.asm:asm-all'].findAll { (module as String).startsWith it }.size() > 0) {
+            return
+        }
+        file.append("    compile '${module}'\n")
+    }
+    file.append('}')
+file.append('''
+sourceSets
+{
+    main
+    {
+        java
+        {
+            srcDir 'src/main/java/'
+        }
+        resources
+        {
+            srcDir 'src/main/resources/'
+        }
+    }
+    test
+    {
+    }
+}
+jar { exclude 'GradleStart*', 'net/minecraftforge/gradle/**' }''')
 }
 
 task resolveAllDependencies {
@@ -262,7 +379,7 @@ task resolveAllDependencies {
 }
 
 def JenkinsNumber() {
-    def conn = new URL("https://ci.codemc.io/job/Mohist-Community/job/Mohist-1.7.10/api/json").openConnection();
+    /*def conn = new URL("https://ci.codemc.io/job/Mohist-Community/job/Mohist-1.7.10/api/json").openConnection();
     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:31.0) Gecko/20100101 Firefox/31.0");
     conn.connect()
     def root = conn.content.text
@@ -270,5 +387,6 @@ def JenkinsNumber() {
 
     String data = jsonSluper.parseText(root)
     def number = data.substring(data.indexOf("number")).split(",")
-    return Integer.valueOf(number[0].replace("number=", "")).intValue()
+    return Integer.valueOf(number[0].replace("number=", "")).intValue()*/
+    return 0;
 }
